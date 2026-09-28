@@ -2,7 +2,7 @@
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ｃｏｎｎｅｃｔ Ｐｒｏ Ｓｍｓ</title>
+    <title>Connect Pro SMS</title>
     <!-- Tailwind CSS CDN -->
     
     <!-- FontAwesome for Live Brand Icons -->
@@ -407,7 +407,7 @@ button:active{transform:scale(.985)}
                 <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#00A859] group-focus-within:text-white transition-colors duration-300 text-xs">
                     <i class="fa-solid fa-magnifying-glass"></i>
                 </span>
-                <input type="text" id="search-input" onkeyup="filterCodes()" placeholder="আপনার নম্বরটি দিয়ে সার্চ করুন..." class="w-full bg-[#181E25] border border-gray-800/80 focus:border-[#00A859] rounded-xl pl-11 pr-4 py-3.5 text-xs text-white focus:outline-none transition-all duration-300 placeholder-gray-500 focus:ring-1 focus:ring-[#00A859]/20">
+                <input type="text" id="search-input" onkeyup="filterCodes()" placeholder="Search by phone number..." class="w-full bg-[#181E25] border border-gray-800/80 focus:border-[#00A859] rounded-xl pl-11 pr-4 py-3.5 text-xs text-white focus:outline-none transition-all duration-300 placeholder-gray-500 focus:ring-1 focus:ring-[#00A859]/20">
             </div>
         </div>
 
@@ -490,7 +490,7 @@ button:active{transform:scale(.985)}
 
             <div id="no-data" class="hidden text-center py-12 text-gray-500 border border-dashed border-gray-800/80 rounded-xl bg-[#11161B]/50 mb-4">
                 <i class="fa-solid fa-envelope-open text-2xl mb-2 block text-gray-600 animate-pulse"></i>
-                কোনো সক্রিয় কোড পাওয়া যায়নি। প্যানেলে ওটিপি আসা মাত্রই এখানে তা স্বয়ংক্রিয়ভাবে লোড হবে।
+                No active OTP codes found. New codes will appear here automatically when available.
             </div>
 
             <div id="feed-container" class="flex flex-col gap-4">
@@ -2891,7 +2891,7 @@ button:active{transform:scale(.985)}
                     }
                 }
             } else {
-                alert("দুঃখিত, এই মূহূর্তে কোনো নতুন নম্বর পাওয়া যায়নি। আবার চেষ্টা করুন।");
+                alert("No new number is currently available. Please try again.");
             }
 
             btnElement.disabled = false;
@@ -3066,7 +3066,7 @@ button:active{transform:scale(.985)}
             filterCodes();
         }
 
-        // 224❖ＣＰＳ❖560 ফরম্যাটে রূপান্তর করার ফাংশন
+        // Convert messages to the 224❖CPS❖560 format
         function getFormattedNumber(num) {
             if (!num) return "Unknown";
             const clean = num.replace(/\D/g, '');
@@ -3167,21 +3167,21 @@ button:active{transform:scale(.985)}
             return { name: 'SYSTEM', icon: '<i class="fa-solid fa-envelope text-gray-400 text-xs animate-pulse"></i>', colorClass: 'text-gray-400' };
         }
 
-        // --- স্মার্ট ওটিপি এক্সট্রাক্টর (স্পেস ও ড্যাশ প্রসেসর) ---
+        // --- Smart OTP extractor (space and dash processor) ---
         function extractOTP(sms) {
             if (!sms) return "------";
             
-            // ১. স্পেস বা ড্যাশ দেওয়া ৬ ডিজিটের কোড (যেমন: "302 568" বা "384-695")
+            // 1. Six-digit codes separated by spaces or dashes (e.g. "302 568" or "384-695")
             let spacedMatches = sms.match(/\b\d{3}[\s-]\d{3}\b/);
             if (spacedMatches) {
-                return spacedMatches[0].replace(/[\s-]/g, ""); // স্পেস বাদ দিয়ে "302568" বানাবে
+                return spacedMatches[0].replace(/[\s-]/g, ""); // Remove spaces to create "302568"
             }
 
-            // ২. স্বাভাবিক ৪ থেকে ৮ ডিজিটের কোড (যেমন: "302568")
+            // 2. Standard 4-8 digit codes (e.g. "302568")
             let matches = sms.match(/\b\d{4,8}\b/);
             if (matches) return matches[0];
 
-            // ৩. টেক্সট প্যাটার্ন খুজবে (যেমন: "code is 123456" বা "g-123456")
+            // 3. Search common text patterns (e.g. "code is 123456" or "g-123456")
             const codePatterns = [
                 /(?:code|otp|verification|g-)\s*(?:is|:)?\s*(\d{4,8})/i,
                 /(\d{3}[\s-]\d{3})/
@@ -3193,7 +3193,7 @@ button:active{transform:scale(.985)}
                 }
             }
 
-            // ৪. ব্যাকআপ
+            // 4. Fallback
             let fallbackMatches = sms.match(/\d{4,8}/);
             if (fallbackMatches) return fallbackMatches[0];
 
@@ -3260,20 +3260,20 @@ button:active{transform:scale(.985)}
             });
         }
 
-        let Ｃｏｎｎｅｃｔ Ｐｒｏ ＳｍｓRefreshBusy = false;
-        async function Ｃｏｎｎｅｃｔ Ｐｒｏ ＳｍｓRefresh() {
-            if (Ｃｏｎｎｅｃｔ Ｐｒｏ ＳｍｓRefreshBusy) return;
-            Ｃｏｎｎｅｃｔ Ｐｒｏ ＳｍｓRefreshBusy = true;
+        let connectProSmsRefreshBusy = false;
+        async function connectProSmsRefresh() {
+            if (connectProSmsRefreshBusy) return;
+            connectProSmsRefreshBusy = true;
             try {
                 await Promise.allSettled([fetchLatestSMS(), fetchConsoleTraffic()]);
             } finally {
-                Ｃｏｎｎｅｃｔ Ｐｒｏ ＳｍｓRefreshBusy = false;
+                connectProSmsRefreshBusy = false;
             }
         }
 
         window.addEventListener('load', () => {
-            Ｃｏｎｎｅｃｔ Ｐｒｏ ＳｍｓRefresh();
-            setInterval(Ｃｏｎｎｅｃｔ Ｐｒｏ ＳｍｓRefresh, 5000);
+            connectProSmsRefresh();
+            setInterval(connectProSmsRefresh, 5000);
         });
         //]]>
     </script>

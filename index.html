@@ -1134,10 +1134,10 @@ html[data-theme="gray"] .wd-select{background:#ffffff}
         </div>
 
         <!-- Community Links (outside Live Traffic) -->
-        <div class="tg-grid">
-            <a href="https://t.me/Titanium_Number" target="_blank" rel="noopener noreferrer" class="tg-pill" style="--c:#229ED9">Channel</a>
-            <a href="https://t.me/Titananium_otp" target="_blank" rel="noopener noreferrer" class="tg-pill" style="--c:#00A859">OTP Group</a>
-            <a href="https://t.me/backup_titanium" target="_blank" rel="noopener noreferrer" class="tg-pill tg-center" style="--c:#A78BFA">Backup</a>
+        <div class="tg-grid" id="community-links">
+            <a id="community-channel" href="https://t.me/Titanium_Number" target="_blank" rel="noopener noreferrer" class="tg-pill" style="--c:#229ED9">Channel</a>
+            <a id="community-otpGroup" href="https://t.me/Titananium_otp" target="_blank" rel="noopener noreferrer" class="tg-pill" style="--c:#00A859">OTP Group</a>
+            <a id="community-backup" href="https://t.me/backup_titanium" target="_blank" rel="noopener noreferrer" class="tg-pill tg-center" style="--c:#A78BFA">Backup</a>
         </div>
 
         <!-- LIVE FEED (Stex live console: Instagram / Facebook / WhatsApp) -->
@@ -1220,6 +1220,7 @@ html[data-theme="gray"] .wd-select{background:#ffffff}
                     <div class="ad-tile" onclick="openMethods()" role="button" tabindex="0"><span class="ad-tile-t">PAYMENT METHODS</span><span class="ad-tile-s" id="ad-methods-sub">0 methods</span></div>
                     <div class="ad-tile wide" onclick="openWithdrawals()" role="button" tabindex="0"><span class="ad-tile-t">WITHDRAW REQUESTS</span><span class="ad-tile-s" id="ad-wd-sub">0 pending</span></div>
                     <div class="ad-tile wide" onclick="openKeys()" role="button" tabindex="0"><span class="ad-tile-t">PANEL KEYS</span><span class="ad-tile-s" id="keys-tile-sub">VoltX OFF  •  Stex OFF</span></div>
+                    <div class="ad-tile wide" onclick="openCommunityLinks()" role="button" tabindex="0"><span class="ad-tile-t">COMMUNITY LINKS</span><span class="ad-tile-s">Manage Channel • OTP Group • Backup URLs</span></div>
                 </div>
             </div>
             <div id="admin-board" style="display:none"><div id="lb-list" class="lb-list"></div></div>
@@ -1243,6 +1244,18 @@ html[data-theme="gray"] .wd-select{background:#ffffff}
             <div id="admin-wd" style="display:none">
                 <div id="wd-admin-tabs" class="na-tabs"></div>
                 <div id="wd-admin-list" class="lb-list"></div>
+            </div>
+            <div id="admin-links" style="display:none">
+                <div class="key-card">
+                    <div class="key-head"><span class="key-name">Channel Link</span></div>
+                    <input id="community-link-channel" class="fo-input" type="url" placeholder="https://t.me/your_channel" autocomplete="url">
+                    <div class="key-head" style="margin-top:14px"><span class="key-name">OTP Group Link</span></div>
+                    <input id="community-link-otpGroup" class="fo-input" type="url" placeholder="https://t.me/your_otp_group" autocomplete="url">
+                    <div class="key-head" style="margin-top:14px"><span class="key-name">Backup Link</span></div>
+                    <input id="community-link-backup" class="fo-input" type="url" placeholder="https://t.me/your_backup" autocomplete="url">
+                    <button class="fo-btn" style="margin-top:14px" onclick="saveCommunityLinks()">Save Links</button>
+                    <p class="key-note">Admin panel থেকে link save করলে homepage-এর Channel, OTP Group এবং Backup button update হবে। Link অবশ্যই https:// দিয়ে শুরু হতে হবে।</p>
+                </div>
             </div>
             <div id="admin-keys" style="display:none">
                 <div class="key-card">
@@ -2065,7 +2078,7 @@ html[data-theme="gray"] .wd-select{background:#ffffff}
         let adminTimer = null, adminView = 'home';
         const BOARD_TITLES = { today: 'Today Top User OTP', week: 'Last 7 Days Top', all: 'All Time User OTP' };
 
-        const ADMIN_VIEWS = ['home', 'board', 'keys', 'rate', 'methods', 'wd'];
+        const ADMIN_VIEWS = ['home', 'board', 'keys', 'rate', 'methods', 'wd', 'links'];
         function adminSetView(name, title) {
             adminView = name;
             ADMIN_VIEWS.forEach(v => { const el = document.getElementById('admin-' + v); if (el) el.style.display = (v === name) ? '' : 'none'; });
@@ -2417,6 +2430,70 @@ html[data-theme="gray"] .wd-select{background:#ffffff}
                 notify('ok', 'Saved', fmtMoney(toPaisa(rate)) + ' per OTP  •  min ' + fmtMoney(toPaisa(min)), { key: 'rate' });
             } catch (e) { notify('warn', 'Save failed', 'Check Firebase rules', { key: 'rate' }); }
         }
+
+        // ---- admin: community links ----
+        const COMMUNITY_LINK_DEFAULTS = {
+            channel: 'https://t.me/Titanium_Number',
+            otpGroup: 'https://t.me/Titananium_otp',
+            backup: 'https://t.me/backup_titanium'
+        };
+        let communityLinksLoaded = false;
+        function validCommunityUrl(value) {
+            try {
+                const u = new URL(String(value || '').trim());
+                return u.protocol === 'https:' && !!u.hostname;
+            } catch (_) { return false; }
+        }
+        function applyCommunityLinks(data) {
+            const links = Object.assign({}, COMMUNITY_LINK_DEFAULTS, data || {});
+            ['channel', 'otpGroup', 'backup'].forEach(k => {
+                const a = document.getElementById('community-' + k);
+                if (a && validCommunityUrl(links[k])) a.href = links[k];
+            });
+        }
+        async function loadCommunityLinks() {
+            const db = getDb();
+            if (!db) { applyCommunityLinks(); return; }
+            try {
+                const snap = await db.ref('settings/communityLinks').once('value');
+                const data = snap.val() || {};
+                applyCommunityLinks(data);
+                ['channel', 'otpGroup', 'backup'].forEach(k => {
+                    const input = document.getElementById('community-link-' + k);
+                    if (input) input.value = data[k] || COMMUNITY_LINK_DEFAULTS[k];
+                });
+                communityLinksLoaded = true;
+            } catch (e) { applyCommunityLinks(); }
+        }
+        function openCommunityLinks() {
+            if (!isAdmin()) return;
+            adminSetView('links', 'Community Links');
+            loadCommunityLinks();
+        }
+        async function saveCommunityLinks() {
+            if (!isAdmin()) return;
+            const db = getDb();
+            if (!db) { notify('warn', 'Database unavailable', 'Check Firebase connection', {key:'community-links'}); return; }
+            const links = {};
+            for (const k of ['channel', 'otpGroup', 'backup']) {
+                const input = document.getElementById('community-link-' + k);
+                const value = (input && input.value || '').trim();
+                if (!validCommunityUrl(value)) {
+                    notify('warn', 'Invalid link', 'All links must be valid https:// URLs', {key:'community-links'});
+                    if (input) input.focus();
+                    return;
+                }
+                links[k] = value;
+            }
+            try {
+                await db.ref('settings/communityLinks').set(links);
+                applyCommunityLinks(links);
+                notify('ok', 'Community links saved', 'Homepage links have been updated', {key:'community-links'});
+            } catch (e) {
+                notify('warn', 'Save failed', 'Check Firebase database rules', {key:'community-links'});
+            }
+        }
+        loadCommunityLinks();
 
         // ---- admin: payment methods ----
         function openMethods() { if (!isAdmin()) return; adminSetView('methods', 'Payment Methods'); renderMethodsAdmin(); }

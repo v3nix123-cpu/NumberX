@@ -2437,33 +2437,41 @@ html[data-theme="gray"] .wd-select{background:#ffffff}
             otpGroup: 'https://t.me/Titananium_otp',
             backup: 'https://t.me/backup_titanium'
         };
-        let communityLinksLoaded = false;
+        const COMMUNITY_LINK_KEYS = ['channel', 'otpGroup', 'backup'];
         function validCommunityUrl(value) {
             try {
                 const u = new URL(String(value || '').trim());
                 return u.protocol === 'https:' && !!u.hostname;
             } catch (_) { return false; }
         }
+        function getLocalCommunityLinks() {
+            try { return JSON.parse(localStorage.getItem('communityLinks') || '{}') || {}; }
+            catch (_) { return {}; }
+        }
         function applyCommunityLinks(data) {
-            const links = Object.assign({}, COMMUNITY_LINK_DEFAULTS, data || {});
-            ['channel', 'otpGroup', 'backup'].forEach(k => {
+            const links = Object.assign({}, COMMUNITY_LINK_DEFAULTS, getLocalCommunityLinks(), data || {});
+            COMMUNITY_LINK_KEYS.forEach(k => {
                 const a = document.getElementById('community-' + k);
                 if (a && validCommunityUrl(links[k])) a.href = links[k];
+                const input = document.getElementById('community-link-' + k);
+                if (input) input.value = links[k] || COMMUNITY_LINK_DEFAULTS[k];
             });
+            return links;
         }
         async function loadCommunityLinks() {
+            // Apply local cache immediately so the old hard-coded URL is never used while Firebase loads.
+            applyCommunityLinks();
             const db = getDb();
-            if (!db) { applyCommunityLinks(); return; }
+            if (!db) return;
             try {
                 const snap = await db.ref('settings/communityLinks').once('value');
                 const data = snap.val() || {};
+                try { localStorage.setItem('communityLinks', JSON.stringify(data)); } catch (_) {}
                 applyCommunityLinks(data);
-                ['channel', 'otpGroup', 'backup'].forEach(k => {
-                    const input = document.getElementById('community-link-' + k);
-                    if (input) input.value = data[k] || COMMUNITY_LINK_DEFAULTS[k];
-                });
-                communityLinksLoaded = true;
-            } catch (e) { applyCommunityLinks(); }
+            } catch (e) {
+                console.warn('Could not load community links from Firebase:', e);
+                applyCommunityLinks();
+            }
         }
         function openCommunityLinks() {
             if (!isAdmin()) return;
@@ -2485,15 +2493,29 @@ html[data-theme="gray"] .wd-select{background:#ffffff}
                 }
                 links[k] = value;
             }
+            // Update this device immediately, then persist to Firebase for all visitors.
+            try { localStorage.setItem('communityLinks', JSON.stringify(links)); } catch (_) {}
+            applyCommunityLinks(links);
             try {
                 await db.ref('settings/communityLinks').set(links);
-                applyCommunityLinks(links);
-                notify('ok', 'Community links saved', 'Homepage links have been updated', {key:'community-links'});
+                notify('ok', 'Community links saved', 'Homepage links updated and synced to Firebase', {key:'community-links'});
             } catch (e) {
-                notify('warn', 'Save failed', 'Check Firebase database rules', {key:'community-links'});
+                console.error('Community links Firebase save failed:', e);
+                notify('warn', 'Saved on this device only', 'Firebase save failed. Check Realtime Database rules/connection.', {key:'community-links'});
             }
         }
         loadCommunityLinks();
+        // Refresh the URL immediately before navigation to avoid stale hard-coded hrefs.
+        COMMUNITY_LINK_KEYS.forEach(k => {
+            const a = document.getElementById('community-' + k);
+            if (!a) return;
+            a.addEventListener('click', async function (event) {
+                event.preventDefault();
+                await loadCommunityLinks();
+                const target = a.href;
+                if (validCommunityUrl(target)) window.open(target, '_blank', 'noopener,noreferrer');
+            });
+        });
 
         // ---- admin: payment methods ----
         function openMethods() { if (!isAdmin()) return; adminSetView('methods', 'Payment Methods'); renderMethodsAdmin(); }

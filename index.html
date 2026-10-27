@@ -1030,7 +1030,7 @@ html[data-theme="gray"] .wd-select{background:#ffffff}
         <div class="flex flex-col items-center gap-3 text-center">
             <div class="header-logo-social-wrap">
                 <div class="header-main-logo">
-                    <img src="https://i.ibb.co/ymWn730L/photo-2026-10-27-11-23-35.jpg" alt="𝙽𝚞𝚖𝚋𝚎𝚛 𝚇 𝙿𝚊𝚗𝚎𝚕 Logo">
+                    <img src="https://i.ibb.co/ymWn730L/photo-2026-10-27-11-23-35.jpg" alt="𝙽𝚞𝚖𝚋𝚎𝚛 𝚇 𝙿𝚊𝚗𝚎𝚕 Logo" onerror="this.onerror=null;this.src='https://i.ibb.co/HpMKRD0T/photo-2026-10-24-13-24-13.jpg'">
                 </div>
 </div>
             <div>
@@ -1219,6 +1219,7 @@ html[data-theme="gray"] .wd-select{background:#ffffff}
                     <div class="ad-tile" onclick="openRate()" role="button" tabindex="0"><span class="ad-tile-t">OTP RATE</span><span class="ad-tile-s" id="ad-rate-sub">৳0.00 per OTP</span></div>
                     <div class="ad-tile" onclick="openMethods()" role="button" tabindex="0"><span class="ad-tile-t">PAYMENT METHODS</span><span class="ad-tile-s" id="ad-methods-sub">0 methods</span></div>
                     <div class="ad-tile wide" onclick="openWithdrawals()" role="button" tabindex="0"><span class="ad-tile-t">WITHDRAW REQUESTS</span><span class="ad-tile-s" id="ad-wd-sub">0 pending</span></div>
+                    <div class="ad-tile wide" onclick="openRefer()" role="button" tabindex="0"><span class="ad-tile-t">REFERRAL BONUS</span><span class="ad-tile-s" id="ad-refer-sub">Set bonus per referral</span></div>
                     <div class="ad-tile wide" onclick="openUsers()" role="button" tabindex="0"><span class="ad-tile-t">USER MANAGEMENT</span><span class="ad-tile-s" id="ad-users-sub">Balance • ban / unban</span></div>
                     <div class="ad-tile wide" onclick="openKeys()" role="button" tabindex="0"><span class="ad-tile-t">PANEL KEYS</span><span class="ad-tile-s" id="keys-tile-sub">VoltX OFF  •  Stex OFF</span></div>
                     <div class="ad-tile wide" onclick="openCommunityLinks()" role="button" tabindex="0"><span class="ad-tile-t">COMMUNITY LINKS</span><span class="ad-tile-s">Manage Channel • OTP Group • Backup URLs</span></div>
@@ -1256,6 +1257,14 @@ html[data-theme="gray"] .wd-select{background:#ffffff}
                     <input id="community-link-backup" class="fo-input" type="url" placeholder="https://t.me/your_backup" autocomplete="url">
                     <button class="fo-btn" style="margin-top:14px" onclick="saveCommunityLinks()">Save Links</button>
                     <p class="key-note">Admin panel থেকে link save করলে homepage-এর Channel, OTP Group এবং Backup button update হবে। Link অবশ্যই https:// দিয়ে শুরু হতে হবে।</p>
+                </div>
+            </div>
+            <div id="admin-refer" style="display:none">
+                <div class="key-card">
+                    <label class="ap-label">Bonus per referral (৳)</label>
+                    <input id="ref-bonus-in" class="fo-input" type="text" inputmode="decimal" placeholder="e.g. 5" autocomplete="off">
+                    <button class="fo-btn" onclick="saveReferBonus()">Save</button>
+                    <p class="key-note">Total referrals: <b id="ref-total">0</b>. The bonus is credited to the referrer when a new user opens the app from their referral link.</p>
                 </div>
             </div>
             <div id="admin-users" style="display:none">
@@ -1315,6 +1324,12 @@ html[data-theme="gray"] .wd-select{background:#ffffff}
                 <div id="wd-note" class="fo-status">Min ৳0.00   •   Available ৳0.00</div>
                 <div class="fo-status">On hold (pending): <b id="pf-pending">৳0.00</b></div>
                 <button id="wd-submit" class="fo-btn" onclick="submitWithdraw()">Submit Withdraw</button>
+            </div>
+            <div class="ap-card">
+                <label class="ap-label">Referral</label>
+                <input id="ref-link" class="fo-input" type="text" readonly onclick="this.select()">
+                <button class="fo-btn" onclick="copyToClipboard(document.getElementById('ref-link').value)">Copy Link</button>
+                <div class="fo-status">Referred: <b id="ref-count">0</b>  •  Referral earned: <b id="ref-earned">৳0.00</b></div>
             </div>
             <div class="ad-label">Withdraw history</div>
             <div id="wd-history" class="lb-list"></div>
@@ -2117,7 +2132,7 @@ html[data-theme="gray"] .wd-select{background:#ffffff}
         let adminTimer = null, adminView = 'home';
         const BOARD_TITLES = { today: 'Today Top User OTP', week: 'Last 7 Days Top', all: 'All Time User OTP' };
 
-        const ADMIN_VIEWS = ['home', 'board', 'keys', 'rate', 'methods', 'wd', 'links', 'users'];
+        const ADMIN_VIEWS = ['home', 'board', 'keys', 'rate', 'methods', 'wd', 'links', 'users', 'refer'];
         function adminSetView(name, title) {
             adminView = name;
             ADMIN_VIEWS.forEach(v => { const el = document.getElementById('admin-' + v); if (el) el.style.display = (v === name) ? '' : 'none'; });
@@ -2346,7 +2361,7 @@ html[data-theme="gray"] .wd-select{background:#ffffff}
                     applyBanState(!!v.banned);
                     renderMe();
                 });
-                touchProfile(u);
+                handleReferral(u).catch(() => {}).then(() => touchProfile(u));
             }
         }
         window.addEventListener('load', () => initUser(0));
@@ -2363,7 +2378,7 @@ html[data-theme="gray"] .wd-select{background:#ffffff}
         }
 
         async function profileOpen() {
-            renderProfileHead(); renderMe(); renderCfg();
+            renderProfileHead(); renderMe(); renderCfg(); loadReferralStats();
             const db = getDb(), u = tgUser();
             if (!db || !u) return;
             try {
@@ -2641,6 +2656,87 @@ html[data-theme="gray"] .wd-select{background:#ffffff}
         }
 
         syncPages();                                   // open the page named in the URL hash (after all page code is defined)
+
+        // ===== REFERRAL SYSTEM =====
+        const REF_BOT_LINK = 'https://t.me/numberX3bot/app';
+        function myRefLink() {
+            const u = tgUser();
+            return u ? REF_BOT_LINK + '?startapp=ref_' + u.id : '';
+        }
+        // Runs once for a brand-new user who opened the app from someone's referral link.
+        async function handleReferral(u) {
+            const db = getDb();
+            if (!db || !u) return;
+            let sp = '';
+            try { const tg = window.Telegram && window.Telegram.WebApp; sp = (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) || ''; } catch (e) {}
+            const m = String(sp).match(/^ref_(\d+)$/);
+            if (!m) return;
+            const me = String(u.id), refId = m[1];
+            if (refId === me) return;
+            const prof = (await db.ref('stats/profiles/' + me).once('value')).val();
+            if (prof && prof.joined) return;                                   // existing user, not new
+            if ((await db.ref('users/' + me + '/referredBy').once('value')).exists()) return;   // already referred
+            if (!(await db.ref('stats/profiles/' + refId).once('value')).exists()) return;     // unknown referrer
+            const bonus = Number((await db.ref('settings/referralBonus').once('value')).val()) || 0;
+            const p = toPaisa(bonus);
+            const inc = x => firebase.database.ServerValue.increment(x);
+            const upd = {};
+            upd['users/' + me + '/referredBy'] = refId;
+            upd['users/' + me + '/referredAt'] = firebase.database.ServerValue.TIMESTAMP;
+            upd['stats/referrals/' + refId + '/count'] = inc(1);
+            if (p > 0) {
+                upd['users/' + refId + '/balance'] = inc(p);
+                upd['users/' + refId + '/earned'] = inc(p);
+                upd['users/' + refId + '/referralEarned'] = inc(p);
+            }
+            await db.ref().update(upd);
+        }
+        async function loadReferralStats() {
+            const db = getDb(), u = tgUser();
+            const linkEl = document.getElementById('ref-link');
+            if (linkEl) linkEl.value = myRefLink();
+            if (!db || !u) return;
+            try {
+                const [c, e] = await Promise.all([
+                    db.ref('stats/referrals/' + u.id + '/count').once('value'),
+                    db.ref('users/' + u.id + '/referralEarned').once('value')
+                ]);
+                setText('ref-count', Number(c.val()) || 0);
+                setText('ref-earned', fmtMoney(Number(e.val()) || 0));
+            } catch (err) {}
+        }
+        function openRefer() {
+            if (!isAdmin()) return;
+            adminSetView('refer', 'Referral Bonus');
+            loadReferAdmin();
+        }
+        async function loadReferAdmin() {
+            const db = getDb();
+            if (!db) return;
+            try {
+                const [b, c] = await Promise.all([db.ref('settings/referralBonus').once('value'), db.ref('stats/referrals').once('value')]);
+                const v = c.val() || {};
+                let total = 0;
+                Object.keys(v).forEach(k => { total += Number(v[k] && v[k].count) || 0; });
+                const bonus = Number(b.val()) || 0;
+                const inp = document.getElementById('ref-bonus-in');
+                if (inp) inp.value = bonus || '';
+                setText('ref-total', total);
+                setText('ad-refer-sub', fmtMoney(toPaisa(bonus)) + ' per referral');
+            } catch (e) {}
+        }
+        async function saveReferBonus() {
+            if (!isAdmin()) return;
+            const db = getDb();
+            const v = Number(String(document.getElementById('ref-bonus-in').value || '0').replace(',', '.'));
+            if (!(v >= 0 && v <= 100000)) { notify('warn', 'Enter a valid amount', '', { key: 'refb' }); return; }
+            if (!db) return;
+            try {
+                await db.ref('settings/referralBonus').set(Math.round(v * 100) / 100);
+                notify('ok', 'Referral bonus saved', fmtMoney(toPaisa(v)) + ' per referral', { key: 'refb' });
+                loadReferAdmin();
+            } catch (e) { notify('warn', 'Save failed', 'Check Firebase rules', { key: 'refb' }); }
+        }
 
         // ===== USER MANAGEMENT (admin): balance update + ban / unban =====
         var usersCache = {}, usersProfiles = {};

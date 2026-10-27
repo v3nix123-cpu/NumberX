@@ -1219,6 +1219,7 @@ html[data-theme="gray"] .wd-select{background:#ffffff}
                     <div class="ad-tile" onclick="openRate()" role="button" tabindex="0"><span class="ad-tile-t">OTP RATE</span><span class="ad-tile-s" id="ad-rate-sub">৳0.00 per OTP</span></div>
                     <div class="ad-tile" onclick="openMethods()" role="button" tabindex="0"><span class="ad-tile-t">PAYMENT METHODS</span><span class="ad-tile-s" id="ad-methods-sub">0 methods</span></div>
                     <div class="ad-tile wide" onclick="openWithdrawals()" role="button" tabindex="0"><span class="ad-tile-t">WITHDRAW REQUESTS</span><span class="ad-tile-s" id="ad-wd-sub">0 pending</span></div>
+                    <div class="ad-tile wide" onclick="openUsers()" role="button" tabindex="0"><span class="ad-tile-t">USER MANAGEMENT</span><span class="ad-tile-s" id="ad-users-sub">Balance • ban / unban</span></div>
                     <div class="ad-tile wide" onclick="openKeys()" role="button" tabindex="0"><span class="ad-tile-t">PANEL KEYS</span><span class="ad-tile-s" id="keys-tile-sub">VoltX OFF  •  Stex OFF</span></div>
                     <div class="ad-tile wide" onclick="openCommunityLinks()" role="button" tabindex="0"><span class="ad-tile-t">COMMUNITY LINKS</span><span class="ad-tile-s">Manage Channel • OTP Group • Backup URLs</span></div>
                 </div>
@@ -1256,6 +1257,12 @@ html[data-theme="gray"] .wd-select{background:#ffffff}
                     <button class="fo-btn" style="margin-top:14px" onclick="saveCommunityLinks()">Save Links</button>
                     <p class="key-note">Admin panel থেকে link save করলে homepage-এর Channel, OTP Group এবং Backup button update হবে। Link অবশ্যই https:// দিয়ে শুরু হতে হবে।</p>
                 </div>
+            </div>
+            <div id="admin-users" style="display:none">
+                <div class="key-card">
+                    <input id="usr-search" class="fo-input" type="text" placeholder="Search name / username / ID" autocomplete="off" oninput="renderUsersAdmin()">
+                </div>
+                <div id="users-list" class="lb-list"></div>
             </div>
             <div id="admin-keys" style="display:none">
                 <div class="key-card">
@@ -1313,6 +1320,37 @@ html[data-theme="gray"] .wd-select{background:#ffffff}
             <div id="wd-history" class="lb-list"></div>
         </div>
     </div>
+
+    <!-- ===== Tools page (2FA + name generator) ===== -->
+    <div id="page-tools" class="app-page">
+        <div class="app-page-head">
+            <button class="app-back" onclick="closePage()" aria-label="Back"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 19l-7-7 7-7"/></svg><span>Back</span></button>
+            <h2 class="app-title">Tools</h2>
+        </div>
+        <div class="app-page-body">
+            <div class="ap-card">
+                <label class="ap-label">2FA Code Generator</label>
+                <input id="tfa-key" class="fo-input" type="text" placeholder="Secret key (e.g. JBSWY3DPEHPK3PXP)" autocomplete="off" autocapitalize="characters" spellcheck="false">
+                <button id="tfa-btn" class="fo-btn" onclick="getTfaCode()">GET CODE</button>
+                <div id="tfa-result" class="fo-result"></div>
+            </div>
+            <div class="ap-card">
+                <label class="ap-label">Name Generator</label>
+                <button class="fo-btn" onclick="generateNames()">Generate Names</button>
+                <div id="ng-result" class="fo-result"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating tool button -->
+    <style id="tools-style">
+    #tools-fab{position:fixed;right:16px;bottom:18px;z-index:9000;width:52px;height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:18px;color:#d6d6da;background:var(--key,#2a2a2d);border:1px solid #46464b;box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 4px 0 #060607,0 10px 16px -8px rgba(0,0,0,.7);cursor:pointer;-webkit-tap-highlight-color:transparent}
+    #tools-fab:active{transform:translateY(3px);box-shadow:0 1px 0 #060607}
+    /* Brand logo + avatar keep their original colours (the theme's grayscale/brightness filter made them look dark) */
+    .header-main-logo img,.header-social img,.pf-avatar img,.traffic-brand-logo{filter:none!important}
+    html[data-theme="gray"] #tools-fab{background:#ffffff;color:#374151;border-color:#d1d5db;box-shadow:0 2px 6px rgba(16,24,40,.12)}
+    </style>
+    <button id="tools-fab" onclick="openPage('tools')" aria-label="Tools"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></button>
 
     <!-- Script Section -->
     <script>
@@ -1892,7 +1930,7 @@ html[data-theme="gray"] .wd-select{background:#ffffff}
         }
 
         // ===== separate pages (own tab + back button) =====
-        const APP_PAGES = { fetchall: 'page-fetchall', others: 'page-others', admin: 'page-admin', profile: 'page-profile' };
+        const APP_PAGES = { fetchall: 'page-fetchall', others: 'page-others', admin: 'page-admin', profile: 'page-profile', tools: 'page-tools' };
 
         function stopManualOtp() {
             if (manualOtpTimer) { clearInterval(manualOtpTimer); manualOtpTimer = null; }
@@ -1902,6 +1940,7 @@ html[data-theme="gray"] .wd-select{background:#ffffff}
 
         function showPage(name) {
             if (name !== 'fetchall') stopManualOtp();
+            if (name !== 'tools' && tfaTimer) { clearInterval(tfaTimer); tfaTimer = null; }
             Object.keys(APP_PAGES).forEach(k => {
                 const el = document.getElementById(APP_PAGES[k]);
                 if (!el) return;
@@ -2078,7 +2117,7 @@ html[data-theme="gray"] .wd-select{background:#ffffff}
         let adminTimer = null, adminView = 'home';
         const BOARD_TITLES = { today: 'Today Top User OTP', week: 'Last 7 Days Top', all: 'All Time User OTP' };
 
-        const ADMIN_VIEWS = ['home', 'board', 'keys', 'rate', 'methods', 'wd', 'links'];
+        const ADMIN_VIEWS = ['home', 'board', 'keys', 'rate', 'methods', 'wd', 'links', 'users'];
         function adminSetView(name, title) {
             adminView = name;
             ADMIN_VIEWS.forEach(v => { const el = document.getElementById('admin-' + v); if (el) el.style.display = (v === name) ? '' : 'none'; });
@@ -2304,6 +2343,7 @@ html[data-theme="gray"] .wd-select{background:#ffffff}
                 db.ref('users/' + u.id).on('value', s => {
                     const v = s.val() || {};
                     pfMe = { balance: Number(v.balance) || 0, earned: Number(v.earned) || 0, withdrawn: Number(v.withdrawn) || 0, pending: Number(v.pending) || 0 };
+                    applyBanState(!!v.banned);
                     renderMe();
                 });
                 touchProfile(u);
@@ -2601,6 +2641,166 @@ html[data-theme="gray"] .wd-select{background:#ffffff}
         }
 
         syncPages();                                   // open the page named in the URL hash (after all page code is defined)
+
+        // ===== USER MANAGEMENT (admin): balance update + ban / unban =====
+        var usersCache = {}, usersProfiles = {};
+        function openUsers() {
+            if (!isAdmin()) return;
+            adminSetView('users', 'User Management');
+            loadUsersAdmin();
+        }
+        async function loadUsersAdmin() {
+            const db = getDb(), list = document.getElementById('users-list');
+            if (!db || !list) return;
+            list.innerHTML = '<div class="oc-hint">Loading...</div>';
+            try {
+                const [u, p] = await Promise.all([db.ref('users').once('value'), db.ref('stats/profiles').once('value')]);
+                usersCache = u.val() || {};
+                usersProfiles = p.val() || {};
+                renderUsersAdmin();
+            } catch (e) { list.innerHTML = '<div class="oc-hint">Could not load users. Check Firebase rules.</div>'; }
+        }
+        function renderUsersAdmin() {
+            const list = document.getElementById('users-list');
+            if (!list || adminView !== 'users') return;
+            const q = (document.getElementById('usr-search').value || '').trim().toLowerCase();
+            const ids = Array.from(new Set([...Object.keys(usersCache), ...Object.keys(usersProfiles)]));
+            const rows = ids.map(uid => {
+                const pr = usersProfiles[uid] || {}, us = usersCache[uid] || {};
+                return { uid, name: pr.name || 'Unknown', username: pr.username || '', balance: Number(us.balance) || 0, banned: !!us.banned };
+            }).filter(r => !q || r.uid.includes(q) || r.name.toLowerCase().includes(q) || r.username.toLowerCase().includes(q))
+              .sort((a, b) => b.balance - a.balance).slice(0, 300);
+            const bannedCount = ids.filter(id => usersCache[id] && usersCache[id].banned).length;
+            setText('ad-users-sub', ids.length + ' users  •  ' + bannedCount + ' banned');
+            list.innerHTML = rows.length ? rows.map(r => {
+                const id = escHtml(r.uid);
+                return '<div class="key-card">' +
+                    '<div class="key-head"><span class="key-name">' + escHtml(r.name) + '</span><span class="key-badge ' + (r.banned ? 'off' : 'on') + '">' + (r.banned ? 'BANNED' : 'ACTIVE') + '</span></div>' +
+                    '<span class="wd-meta">' + (r.username ? '@' + escHtml(r.username) : 'no username') + '  •  ID ' + id + '</span>' +
+                    '<span class="wd-meta">Balance: <b>' + fmtMoney(r.balance) + '</b></span>' +
+                    '<div class="key-field"><input id="bal-' + id + '" class="fo-input" type="text" inputmode="decimal" placeholder="Amount (৳)  e.g. 50 or -20" autocomplete="off"></div>' +
+                    '<div class="key-actions">' +
+                    '<button class="oth-btn" data-id="' + id + '" onclick="adminBalance(this.dataset.id,\'set\')">Set</button>' +
+                    '<button class="oth-btn" data-id="' + id + '" onclick="adminBalance(this.dataset.id,\'add\')">Add</button>' +
+                    '<button class="na-btn" data-id="' + id + '" data-b="' + (r.banned ? '0' : '1') + '" onclick="adminBan(this)">' + (r.banned ? 'Unban' : 'Ban') + '</button>' +
+                    '</div></div>';
+            }).join('') : '<div class="oc-hint">No users found.</div>';
+        }
+        async function adminBalance(uid, mode) {
+            if (!isAdmin()) return;
+            const inp = document.getElementById('bal-' + uid);
+            const raw = inp ? String(inp.value).trim() : '';
+            const v = Number(raw.replace(',', '.'));
+            if (raw === '' || !isFinite(v)) { notify('warn', 'Enter an amount', 'e.g. 50 or -20', { key: 'usb' }); return; }
+            const db = getDb();
+            if (!db) return;
+            const p = Math.round(v * 100);
+            try {
+                if (mode === 'set') {
+                    if (p < 0) { notify('warn', 'Balance cannot be negative', '', { key: 'usb' }); return; }
+                    await db.ref('users/' + uid + '/balance').set(p);
+                } else {
+                    await db.ref('users/' + uid + '/balance').transaction(c => Math.max(0, (Number(c) || 0) + p));
+                }
+                notify('ok', mode === 'set' ? 'Balance set' : 'Balance updated', fmtMoney(Math.abs(p)), { key: 'usb' });
+                loadUsersAdmin();
+            } catch (e) { notify('warn', 'Update failed', 'Check Firebase rules', { key: 'usb' }); }
+        }
+        async function adminBan(btn) {
+            if (!isAdmin()) return;
+            const uid = btn.dataset.id, ban = btn.dataset.b === '1';
+            if (!confirm(ban ? 'Ban this user?' : 'Unban this user?')) return;
+            try {
+                await getDb().ref('users/' + uid + '/banned').set(ban);
+                notify('ok', ban ? 'User banned' : 'User unbanned', '', { key: 'usr' });
+                loadUsersAdmin();
+            } catch (e) { notify('warn', 'Failed', 'Check Firebase rules', { key: 'usr' }); }
+        }
+        // Banned user: full-screen block (client-side; real enforcement also needs Firebase rules)
+        function applyBanState(banned) {
+            let ov = document.getElementById('ban-overlay');
+            if (!banned) { if (ov) ov.remove(); return; }
+            if (ov) return;
+            ov = document.createElement('div');
+            ov.id = 'ban-overlay';
+            ov.style.cssText = 'position:fixed;inset:0;z-index:2147483600;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;padding:24px';
+            ov.innerHTML = '<div class="ap-card" style="max-width:360px;text-align:center"><span class="ad-tile-t">ACCOUNT SUSPENDED</span><span class="wd-meta">Your account has been banned. Please contact the admin.</span></div>';
+            document.body.appendChild(ov);
+        }
+
+        // ===== TOOLS: 2FA code generator (TOTP, RFC 6238) =====
+        var tfaSecret = '', tfaStep = -1, tfaTimer = null;
+        function base32ToBytes(s) {
+            const alpha = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+            const clean = String(s).toUpperCase().replace(/[\s=-]/g, '');
+            if (!clean) throw new Error('Empty key');
+            let bits = 0, value = 0;
+            const out = [];
+            for (const ch of clean) {
+                const idx = alpha.indexOf(ch);
+                if (idx < 0) throw new Error('Invalid base32');
+                value = ((value << 5) | idx) & 0xFFFF;
+                bits += 5;
+                if (bits >= 8) { bits -= 8; out.push((value >> bits) & 0xFF); }
+            }
+            return new Uint8Array(out);
+        }
+        async function totpCode(secret, counter) {
+            const key = await crypto.subtle.importKey('raw', base32ToBytes(secret), { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']);
+            const buf = new ArrayBuffer(8), dv = new DataView(buf);
+            dv.setUint32(0, Math.floor(counter / 0x100000000));
+            dv.setUint32(4, counter >>> 0);
+            const sig = new Uint8Array(await crypto.subtle.sign('HMAC', key, buf));
+            const o = sig[sig.length - 1] & 0x0f;
+            const bin = ((sig[o] & 0x7f) << 24) | (sig[o + 1] << 16) | (sig[o + 2] << 8) | sig[o + 3];
+            return String(bin % 1000000).padStart(6, '0');
+        }
+        async function tfaRender() {
+            const box = document.getElementById('tfa-result');
+            if (!box || !tfaSecret) return;
+            const now = Date.now() / 1000;
+            const step = Math.floor(now / 30);
+            const left = 30 - Math.floor(now % 30);
+            try {
+                if (step !== tfaStep) {
+                    const code = await totpCode(tfaSecret, step);
+                    tfaStep = step;
+                    box.innerHTML = '<div class="fo-item"><div class="fo-top"><b class="fo-code">' + code.slice(0, 3) + ' ' + code.slice(3) + '</b>' +
+                        '<button class="fo-copy" data-v="' + code + '" onclick="copyToClipboard(this.dataset.v)">Copy</button></div>' +
+                        '<span class="fo-msg">Expires in <b class="tfa-left"></b></span></div>';
+                }
+                const el = box.querySelector('.tfa-left');
+                if (el) el.textContent = left + 's';
+            } catch (e) {
+                tfaSecret = ''; clearInterval(tfaTimer); tfaTimer = null;
+                box.innerHTML = '<div class="fo-empty">Invalid 2FA key. Check and try again.</div>';
+            }
+        }
+        async function getTfaCode() {
+            const inp = document.getElementById('tfa-key');
+            const key = (inp ? inp.value : '').trim();
+            try { base32ToBytes(key); }
+            catch (e) { notify('warn', 'Invalid 2FA key', 'Use the Base32 secret (A-Z, 2-7)', { key: 'tfa' }); return; }
+            tfaSecret = key; tfaStep = -1;
+            if (tfaTimer) clearInterval(tfaTimer);
+            tfaTimer = setInterval(tfaRender, 1000);
+            await tfaRender();
+        }
+
+        // ===== TOOLS: random name generator =====
+        const NG_FIRST = ['Rahim', 'Karim', 'Hasan', 'Rafi', 'Sakib', 'Tanvir', 'Imran', 'Arif', 'Nayeem', 'Shakil', 'Fahim', 'Mehedi', 'Rakib', 'Jahid', 'Sabbir', 'Fatema', 'Nusrat', 'Sumaiya', 'Ayesha', 'Mim', 'Riya', 'Sadia', 'Nadia', 'Lamia', 'Farzana', 'Jannat', 'Sharmin', 'Ananya', 'Liam', 'Noah', 'Ethan', 'Emma', 'Olivia', 'Ava'];
+        const NG_LAST = ['Ahmed', 'Hossain', 'Khan', 'Islam', 'Rahman', 'Chowdhury', 'Uddin', 'Miah', 'Sarkar', 'Mondal', 'Siddique', 'Talukder', 'Bhuiyan', 'Patwary', 'Akter', 'Begum', 'Sultana', 'Parvin', 'Khatun', 'Smith', 'Brown', 'Miller', 'Wilson'];
+        function generateNames() {
+            const box = document.getElementById('ng-result');
+            if (!box) return;
+            const pick = a => a[Math.floor(Math.random() * a.length)];
+            const set = new Set();
+            while (set.size < 5) set.add(pick(NG_FIRST) + ' ' + pick(NG_LAST));
+            box.innerHTML = Array.from(set).map(n =>
+                '<div class="fo-item"><div class="fo-top"><b class="fo-code" style="font-size:15px;letter-spacing:.04em">' + escHtml(n) + '</b>' +
+                '<button class="fo-copy" data-v="' + escHtml(n) + '" onclick="copyToClipboard(this.dataset.v)">Copy</button></div></div>'
+            ).join('');
+        }
 
         // ===== NOTIFICATION SYSTEM (always on top) =====
         function notify(type, title, text, opts) {
